@@ -1,0 +1,9 @@
+-- type Expr
+--     = Var String
+--     | IntLit Int
+--     | BoolLit Bool
+--     | Add Expr Expr
+--     | Sub Expr Expr
+--     | Mul Expr Expr
+--     | Div Expr Expr
+--     | If Expr Expr Expr
