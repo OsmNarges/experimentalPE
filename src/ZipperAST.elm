@@ -3,10 +3,11 @@ module ZipperAST exposing (..)
 type Expression
     = Variable String
     | Literal Int
-    --| BoolLiteral Bool
+    | BoolLiteral Bool
     | BinaryOp BinaryOperator Expression Expression
     | IfThenElse Expression Expression Expression
-    --| UnaryOp UnaryOperator Expression
+    | UnaryOp UnaryOperator Expression
+    --| Definition String Expression
 
 type BinaryOperator
     = Add
@@ -14,18 +15,20 @@ type BinaryOperator
     | Multiply
     | Divide
     | GreaterThan
-    -- | And
-    -- | Or
+    | And
+    | Or
 
--- type UnaryOperator
---     = Not
+type UnaryOperator
+    = Not
 
 type Crumb
     = LeftOf BinaryOperator Expression
     | RightOf BinaryOperator Expression
+    | RightOfUnary UnaryOperator
     | CondOf Expression Expression
     | ThenOf Expression Expression
     | ElseOf Expression Expression
+    --| DefExpr String
 
 type Zipper
     = Zipper Expression (List Crumb)
@@ -49,6 +52,9 @@ goRight (Zipper expr crumbs) =
     case (expr, crumbs) of
         (BinaryOp op left right, rest) ->
             Just <| Zipper right (RightOf op left :: rest)
+
+        (UnaryOp op innerExpr, rest) ->
+            Just <| Zipper innerExpr (RightOfUnary op :: rest)
 
         (IfThenElse cond then_ else_, rest) ->
             Just <| Zipper then_ (ThenOf cond else_ :: rest)

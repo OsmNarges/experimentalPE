@@ -34,8 +34,8 @@ expressionToString expr =
         Literal i ->
             String.fromInt i
 
-        -- BoolLiteral b ->
-        --     String.fromBool b
+        BoolLiteral b ->
+            boolToString b
 
         BinaryOp op left right ->
             "("
@@ -54,10 +54,11 @@ expressionToString expr =
                 ++ " else "
                 ++ expressionToString else_
 
-        -- UnaryOp op exprP ->
-        --     unaryOperatorToString op
-        --         ++ " "
-        --         ++ expressionToString exprP
+        UnaryOp op exprP ->
+            unaryOperatorToString op
+                ++ " "
+                ++ expressionToString exprP
+
 
 
 binaryOperatorToString : BinaryOperator -> String
@@ -78,17 +79,24 @@ binaryOperatorToString op =
         GreaterThan ->
             ">"
 
-        -- And ->
-        --     "&&"
+        And ->
+            "&&"
 
-        -- Or ->
-        --     "||"
+        Or ->
+            "||"
 
--- unaryOperatorToString : UnaryOperator -> String
--- unaryOperatorToString op =
---     case op of
---         Not ->
---             "!"
+unaryOperatorToString : UnaryOperator -> String
+unaryOperatorToString op =
+    case op of
+        Not ->
+            "!"
+
+boolToString : Bool -> String
+boolToString b =
+    if b then
+        "True"
+    else
+        "False"
 
 -- exprInit : Expression
 -- exprInit =
@@ -98,18 +106,28 @@ binaryOperatorToString op =
 --             (Variable "x"))
 --         (Literal 3)
 
+-- exprInit : Expression
+-- exprInit =
+--     BinaryOp Add
+--         (IfThenElse
+--             (BinaryOp GreaterThan
+--                 (Variable "x")
+--                 (Literal 10))
+--             (BinaryOp Multiply
+--                 (Literal 2)
+--                 (Variable "x"))
+--             (Literal 3))
+--         (Literal 5)
+
 exprInit : Expression
 exprInit =
-    BinaryOp Add
-        (IfThenElse
-            (BinaryOp GreaterThan
-                (Variable "x")
-                (Literal 10))
-            (BinaryOp Multiply
-                (Literal 2)
-                (Variable "x"))
-            (Literal 3))
-        (Literal 5)
+    IfThenElse
+        (BinaryOp And
+            (BinaryOp GreaterThan (Variable "x") (Literal 3))
+            (UnaryOp Not (BinaryOp GreaterThan (Variable "y") (Literal 10)))
+        )
+        (BinaryOp Multiply (Variable "x") (Literal 2))
+        (BinaryOp Add (Variable "y") (Literal 5))
 
 -- Change the Model definition
 type alias Model =
@@ -289,17 +307,25 @@ expressionWithCursorToString (Zipper expr crumbs) =
                     else
                         [ Html.text ("if " ++ expressionToString cond ++ " then " ++ expressionToString then_ ++ " else " ++ expressionToString exprP) ]
 
-                -- UnaryOp op exprP ->
-                --     let
-                --         renderedExpr =
-                --             expressionToString exprP
-                --     in
-                --     if crumbs == [RightOf op] then
-                --         [ Html.span [ class "cursor" ] [ Html.text <| unaryOperatorToString op ]
-                --         , Html.text (" " ++ renderedExpr)
-                --         ]
-                --     else
-                --         [ Html.text <| unaryOperatorToString op ++ " " ++ renderedExpr ]
+                RightOfUnary op :: rest ->
+                    case exprP of
+                        UnaryOp _ innerExpr ->
+                            let
+                                renderedExpr =
+                                    expressionToString innerExpr
+                            in
+                            if crumbs == [RightOfUnary op] then
+                                [ Html.span [ class "cursor" ] [ Html.text <| unaryOperatorToString op ]
+                                , Html.text (" " ++ renderedExpr)
+                                ]
+                            else
+                                [ Html.text <| unaryOperatorToString op ++ " " ++ renderedExpr ]
+                            
+                        _ ->
+                            [ Html.text <| expressionToString exprP ]
+
+
+
 
 
     in
