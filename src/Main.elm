@@ -12,10 +12,10 @@ import Html.Events exposing (on)
 import Html.Attributes exposing (class, style)
 
 
-type alias Model =
-    { zipper : Maybe Zipper
-    , display : String
-    }
+-- type alias Model =
+--     { zipper : Maybe Zipper
+--     , display : String
+--     }
 
 
 type Msg
@@ -34,6 +34,9 @@ expressionToString expr =
         Literal i ->
             String.fromInt i
 
+        -- BoolLiteral b ->
+        --     String.fromBool b
+
         BinaryOp op left right ->
             "("
                 ++ expressionToString left
@@ -42,6 +45,19 @@ expressionToString expr =
                 ++ " "
                 ++ expressionToString right
                 ++ ")"
+        
+        IfThenElse cond then_ else_ ->
+            "if "
+                ++ expressionToString cond
+                ++ " then "
+                ++ expressionToString then_
+                ++ " else "
+                ++ expressionToString else_
+
+        -- UnaryOp op exprP ->
+        --     unaryOperatorToString op
+        --         ++ " "
+        --         ++ expressionToString exprP
 
 
 binaryOperatorToString : BinaryOperator -> String
@@ -59,19 +75,53 @@ binaryOperatorToString op =
         Divide ->
             "/"
 
+        GreaterThan ->
+            ">"
+
+        -- And ->
+        --     "&&"
+
+        -- Or ->
+        --     "||"
+
+-- unaryOperatorToString : UnaryOperator -> String
+-- unaryOperatorToString op =
+--     case op of
+--         Not ->
+--             "!"
+
+-- exprInit : Expression
+-- exprInit =
+--     BinaryOp Add
+--         (BinaryOp Multiply
+--             (Literal 2)
+--             (Variable "x"))
+--         (Literal 3)
+
 exprInit : Expression
 exprInit =
     BinaryOp Add
-        (BinaryOp Multiply
-            (Literal 2)
-            (Variable "x"))
-        (Literal 3)
+        (IfThenElse
+            (BinaryOp GreaterThan
+                (Variable "x")
+                (Literal 10))
+            (BinaryOp Multiply
+                (Literal 2)
+                (Variable "x"))
+            (Literal 3))
+        (Literal 5)
 
+-- Change the Model definition
+type alias Model =
+    { zipper : Maybe Zipper
+    , display : Html Msg
+    }
 
+-- Update the init function
 init : Model
 init =
     { zipper = Just <| Zipper exprInit []
-    , display = expressionToString exprInit
+    , display = maybeDisplay (Just <| Zipper exprInit []) expressionWithCursorToString
     }
 
 update : Msg -> Model -> Model
@@ -104,15 +154,6 @@ update msg model =
         NoOp ->
             model
 
-maybeDisplay : Maybe Zipper -> (Zipper -> String) -> String
-maybeDisplay zipper f =
-    case zipper of
-        Just zipperP ->
-            f zipperP
-
-        Nothing ->
-            "Invalid operation"
-
 keyToMsg : String -> Msg
 keyToMsg key =
     case key of
@@ -130,6 +171,24 @@ keyToMsg key =
 
         _ ->
             NoOp
+
+-- maybeDisplay : Maybe Zipper -> (Zipper -> String) -> String
+-- maybeDisplay zipper f =
+--     case zipper of
+--         Just zipperP ->
+--             f zipperP
+
+--         Nothing ->
+--             "Invalid operation"
+
+maybeDisplay : Maybe Zipper -> (Zipper -> Html Msg) -> Html Msg
+maybeDisplay zipper f =
+    case zipper of
+        Just zipperP ->
+            f zipperP
+
+        Nothing ->
+            Html.text "Invalid operation"
 
 view : Model -> Html Msg
 view model =
@@ -155,9 +214,7 @@ body {
 }
         """ ]
         , Html.div [ class "editor" ]
-            [ Html.div []
-                [ Html.text <| maybeDisplay model.zipper expressionWithCursorToString ]
-            ]
+            [ maybeDisplay model.zipper expressionWithCursorToString ]
         ]
 
 
@@ -175,49 +232,84 @@ main =
         , subscriptions = \_ -> onKeyDown keyDecoder
         }
 
-expressionWithCursorToString : Zipper -> String
-expressionWithCursorToString (Zipper expr focus) =
+expressionWithCursorToString : Zipper -> Html Msg
+expressionWithCursorToString (Zipper expr crumbs) =
     let
-        renderWithCursor exprP =
+        renderWithCursor exprP focus =
             case focus of
                 [] ->
-                    expressionToString exprP
+                    [ Html.text <| expressionToString exprP ]
 
-                LeftOf op right :: crumbs ->
+                LeftOf op right :: rest ->
                     let
                         renderedRight =
                             expressionToString right
                     in
-                    if focus == LeftOf op right :: crumbs then
-                        expressionToString exprP
-                            ++ " " ++ binaryOperatorToString op
-                            ++ " <span class=\"cursor\">" ++ renderedRight ++ "</span>"
+                    if crumbs == LeftOf op right :: rest then
+                        [ Html.text (expressionToString exprP ++ " " ++ binaryOperatorToString op ++ " ")
+                        , Html.span [ class "cursor" ] [ Html.text renderedRight ]
+                        ]
                     else
-                        expressionToString exprP
-                            ++ " " ++ binaryOperatorToString op
-                            ++ " " ++ renderedRight
+                        [ Html.text (expressionToString exprP ++ " " ++ binaryOperatorToString op ++ " " ++ renderedRight) ]
 
-                RightOf op left :: crumbs ->
+                RightOf op left :: rest ->
                     let
                         renderedLeft =
                             expressionToString left
                     in
-                    if focus == RightOf op left :: crumbs then
-                        "<span class=\"cursor\">" ++ renderedLeft ++ "</span>"
-                            ++ " " ++ binaryOperatorToString op
-                            ++ " " ++ expressionToString exprP
+                    if crumbs == RightOf op left :: rest then
+                        [ Html.span [ class "cursor" ] [ Html.text renderedLeft ]
+                        , Html.text (" " ++ binaryOperatorToString op ++ " " ++ expressionToString exprP)
+                        ]
                     else
-                        renderedLeft ++ " " ++ binaryOperatorToString op
-                            ++ " " ++ expressionToString exprP
+                        [ Html.text (renderedLeft ++ " " ++ binaryOperatorToString op ++ " " ++ expressionToString exprP) ]
+
+                CondOf then_ else_ :: rest ->
+                    if crumbs == CondOf then_ else_ :: rest then
+                        [ Html.span [ class "cursor" ] [ Html.text <| expressionToString exprP ]
+                        , Html.text (" then " ++ expressionToString then_ ++ " else " ++ expressionToString else_)
+                        ]
+                    else
+                        [ Html.text (expressionToString exprP ++ " then " ++ expressionToString then_ ++ " else " ++ expressionToString else_) ]
+
+                ThenOf cond else_ :: rest ->
+                    if crumbs == ThenOf cond else_ :: rest then
+                        [ Html.text ("if " ++ expressionToString cond ++ " ")
+                        , Html.span [ class "cursor" ] [ Html.text <| expressionToString exprP ]
+                        , Html.text (" else " ++ expressionToString else_)
+                        ]
+                    else
+                        [ Html.text ("if " ++ expressionToString cond ++ " then " ++ expressionToString exprP ++ " else " ++ expressionToString else_) ]
+
+                ElseOf cond then_ :: rest ->
+                    if crumbs == ElseOf cond then_ :: rest then
+                        [ Html.text ("if " ++ expressionToString cond ++ " then " ++ expressionToString then_ ++ " ")
+                        , Html.span [ class "cursor" ] [ Html.text <| expressionToString exprP ]
+                        ]
+                    else
+                        [ Html.text ("if " ++ expressionToString cond ++ " then " ++ expressionToString then_ ++ " else " ++ expressionToString exprP) ]
+
+                -- UnaryOp op exprP ->
+                --     let
+                --         renderedExpr =
+                --             expressionToString exprP
+                --     in
+                --     if crumbs == [RightOf op] then
+                --         [ Html.span [ class "cursor" ] [ Html.text <| unaryOperatorToString op ]
+                --         , Html.text (" " ++ renderedExpr)
+                --         ]
+                --     else
+                --         [ Html.text <| unaryOperatorToString op ++ " " ++ renderedExpr ]
+
+
     in
-    case focus of
+    case crumbs of
         [] ->
-            expressionToString expr
+            Html.div [] <| renderWithCursor expr crumbs
 
-        LeftOf op right :: crumbs ->
-            expressionWithCursorToString (Zipper (BinaryOp op expr right) crumbs)
-                |> (\s -> "(" ++ s ++ ")")
-
-        RightOf op left :: crumbs ->
-            expressionWithCursorToString (Zipper (BinaryOp op left expr) crumbs)
-                |> (\s -> "(" ++ s ++ ")")
+        _ ->
+            Html.div []
+                ( [ Html.text "(" ]
+                    ++ renderWithCursor expr crumbs
+                    ++ [ Html.text ")" ]
+                )
