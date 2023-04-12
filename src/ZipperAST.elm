@@ -97,6 +97,8 @@ goUp (Zipper expr crumbs) =
         ElseOf cond then_ :: rest ->
             Just <| Zipper (IfThenElse cond then_ expr) rest
 
+        RightOfUnary op :: rest ->
+            Just <| Zipper (UnaryOp op expr) rest
         _ ->
             Nothing
 
