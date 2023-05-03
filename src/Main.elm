@@ -179,7 +179,7 @@ body {
 }
 .cursor {
     background-color: #FFEB3B;
-    /* padding: 2px 4px; */
+    padding: 2px 2px;
     border-radius: 3px;
     display: inline;
 }
