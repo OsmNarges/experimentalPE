@@ -1,14 +1,12 @@
 module ZipperAST exposing (..)
---import Main2 exposing (CursorDirection(..))
 
 type Expression
-    = Variable String
-    | Literal Int
-    | BoolLiteral Bool
-    | BinaryOp BinaryOperator Expression Expression
-    | IfThenElse Expression Expression Expression
-    | UnaryOp UnaryOperator Expression
-    --| Definition String Expression
+    = Variable String  -- x
+    | Literal Int   -- 4
+    | BoolLiteral Bool   -- True
+    | BinaryOp BinaryOperator Expression Expression  -- 2 + (x + 4)
+    | IfThenElse Expression Expression Expression   -- if (x>2) then 7 else 5
+    | UnaryOp UnaryOperator Expression  -- Not False
 
 type BinaryOperator
     = Add
@@ -29,7 +27,6 @@ type Crumb
     | CondOf Expression Expression
     | ThenOf Expression Expression
     | ElseOf Expression Expression
-    --| DefExpr String
 
 type Zipper
     = Zipper Expression (List Crumb)
@@ -63,21 +60,6 @@ goRight (Zipper expr crumbs) =
         _ ->
             Nothing
 
--- goRight : Zipper -> Maybe Zipper
--- goRight (Zipper expr crumbs) =
---     case (expr, crumbs) of
---         (BinaryOp op left right, rest) ->
---             Just <| Zipper right (RightOf op left :: rest)
-
---         (UnaryOp op innerExpr, rest) ->
---             Just <| Zipper innerExpr (RightOfUnary op :: rest)
-
---         (IfThenElse cond then_ else_, rest) ->
---             Just <| Zipper then_ (ThenOf cond else_ :: rest)
-
---         _ ->
---             Nothing
-
 
 goUp : Zipper -> Maybe Zipper
 goUp (Zipper expr crumbs) =
@@ -102,16 +84,6 @@ goUp (Zipper expr crumbs) =
         _ ->
             Nothing
 
--- last working before changing the arrow msgs
--- goDown : Zipper -> Maybe Zipper
--- goDown (Zipper expr crumbs) =
---     case expr of
---         IfThenElse _ _ _ ->
---             goRight <| Zipper expr crumbs
-
---         _ ->
---             goUp <| Zipper expr crumbs
-
 goDown : Zipper -> Maybe Zipper
 goDown (Zipper expr crumbs) =
     case expr of
@@ -126,16 +98,6 @@ goDown (Zipper expr crumbs) =
 
         _ ->
             goUp <| Zipper expr crumbs
-
-
--- goDown : Zipper -> Maybe Zipper
--- goDown (Zipper expr crumbs) =
---     case expr of
---         IfThenElse _ _ _ ->
---             goRight <| Zipper expr crumbs
-
---         _ ->
---             goUp <| Zipper expr crumbs
 
 -- New helper function to navigate to the n-th child of an expression
 goChild : Zipper -> Int -> Maybe Zipper
@@ -188,7 +150,6 @@ goNextSibling (Zipper expr crumbs) =
 
         _ ->
             Nothing
-
 
 -- Editing
 replace : Expression -> Zipper -> Zipper
